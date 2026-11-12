@@ -8,7 +8,7 @@
 **CWE:** CWE-79 --- Improper Neutralization of Input During Web Page
 Generation ('Cross-site Scripting')\
 **CAPEC:** CAPEC-592 --- Stored XSS\
-**Status:** Vulnerabilidade reproduzida em laboratório; persistência
+**Status:** Vulnerabilidade reproduzida; persistência
 após nova autenticação confirmada
 
 ------------------------------------------------------------------------
@@ -30,7 +30,7 @@ identificado que o valor recuperado é processado por
 encaminhado à renderização HTML sem codificação contextual explícita no
 ponto de saída analisado.
 
-Em ambiente de laboratório autorizado, foi demonstrada a execução de
+Em ambiente autorizado, foi demonstrada a execução de
 JavaScript no contexto da aplicação administrativa por meio de conteúdo
 armazenado no campo de descrição.
 
@@ -51,7 +51,7 @@ e a atribuição de CVE permanecem pendentes.
   Produto / Componente    Versão                  Status
   ----------------------- ----------------------- -----------------------
   modified eCommerce      `3.3.0-r16825-lab`      Stored XSS reproduzido
-  Shopsoftware --- Tax    (imagem do laboratório) e persistência
+  Shopsoftware --- Tax                            e persistência
   Rates                                           confirmada no
                                                   laboratório
 
@@ -84,6 +84,21 @@ fluxo:
 7.  O resultado é concatenado ao HTML do painel de informações.
 8.  O conteúdo é renderizado por meio das classes de apresentação
     administrativas.
+    
+## 3. Vulnerability Description
+
+The vulnerability is related to the lack of proper neutralization of HTML content in the output of the `tax_description` field.
+
+Analysis of the `/admin/tax_rates.php` file identified the following flow:
+
+1. The `tax_description` field is received via `$_POST`.
+2. The value is processed by `xtc_db_prepare_input()`.
+3. The content is organized by language.
+4. The content is persisted in the `TABLE_TAX_RATES` table.
+5. Subsequently, the value is retrieved and processed by `parse_multi_language_value()`.
+6. The `decode_htmlentities()` function decodes the content.
+7. The result is concatenated into the information panel's HTML.
+8. The content is rendered through the administrative presentation classes.
 
 ### Condições necessárias
 
@@ -135,17 +150,18 @@ Não foi demonstrada indisponibilidade do serviço.
 
 ### CVSS
 
--   **Pontuação:** Pendente de avaliação.
--   **Severidade:** Em avaliação.
--   **Vetor:** Pendente de definição.
+- **Versão:** CVSS 3.1
+- **Pontuação preliminar:** 4.8
+- **Severidade:** Média
+- **Vetor:** `CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:C/C:L/I:L/A:N`
 
-A pontuação deverá considerar, entre outros fatores:
+A avaliação considera que a inserção do conteúdo malicioso exige privilégios administrativos e que outro usuário administrativo precisa acessar a página afetada para que o JavaScript armazenado seja executado.
 
--   Privilégio necessário para inserir a descrição.
--   Necessidade de interação de outro usuário.
--   Escopo de segurança afetado.
--   Impacto efetivamente demonstrado sobre confidencialidade,
-    integridade e disponibilidade.
+A persistência foi confirmada por meio de testes repetidos, inclusive após encerramento da sessão administrativa e novo acesso ao painel.
+
+Os impactos de confidencialidade e integridade representam uma estimativa do potencial de exploração no contexto da vítima e ainda dependem de validação adicional. A pontuação deverá ser revisada caso os testes demonstrem impacto diferente.
+
+##A pontuação apresentada é preliminar e está sujeita à validação final das métricas CVSS.##
 
 ### CWE
 
@@ -309,16 +325,6 @@ A persistência foi validada por meio dos seguintes procedimentos:
 6.  Nova execução do conteúdo armazenado.
 7.  Repetição do procedimento com diferentes mensagens de alerta.
 
-### Limitações da PoC
-
--   Executada exclusivamente em ambiente local autorizado.
--   Não realiza exfiltração de dados.
--   Não acessa credenciais ou cookies.
--   Não cria backdoors.
--   Não realiza exploração automatizada.
--   Não provoca indisponibilidade intencional.
--   Não demonstra, por si só, execução de ações administrativas não
-    autorizadas ou acesso a dados protegidos.
 
 ## 9. Passos para reprodução
 
@@ -424,7 +430,7 @@ armazenados no banco de dados.
   12/11/2026                          Confirmação de persistência após
                                       encerramento e nova autenticação
 
-  Pendente                            Validação em instalação oficial e
+ ## Pendente                            Validação em instalação oficial e
                                       identificação do escopo de versões
 
   Pendente                            Notificação ao fornecedor
@@ -433,7 +439,7 @@ armazenados no banco de dados.
 
   Pendente                            Solicitação ou atribuição de CVE
 
-  Pendente                            Publicação do advisory
+  Pendente                            Publicação do advisory ###
   -----------------------------------------------------------------------
 
 ## 14. Comunicação com o fornecedor
@@ -450,7 +456,7 @@ A vulnerabilidade foi identificada e reproduzida em ambiente de
 laboratório por:
 
 -   **Pesquisador:** Jaime de Melo Gama da Silva.
--   **Organização:** A definir.
+-   **Organização:** Redscan academy research team.
 -   **Contato:** A definir.
 -   **Perfil:** A definir.
 
