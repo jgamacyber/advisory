@@ -1,67 +1,67 @@
 # Security Advisory — Stored Cross-Site Scripting in Tax Rates Management
 
-## 1. Informações gerais
+## 1. General Information
 
-| Campo | Informação |
+| Field | Information |
 |---|---|
-| Produto | Modified eCommerce Shopsoftware |
-| Versão analisada | 3.3.0 |
-| Revisão | 16825 |
-| Componente | Administration — Tax Rates |
-| Arquivo afetado | `admin/tax_rates.php` |
-| Vulnerabilidade | Stored Cross-Site Scripting (XSS) |
+| Product | Modified eCommerce Shopsoftware |
+| Analyzed Version | 3.3.0-r16825 |
+| Revision | 16825 |
+| Component | Administration — Tax Rates |
+| Affected File | `admin/tax_rates.php` |
+| Vulnerability | Stored Cross-Site Scripting (XSS) |
 | CWE | CWE-79 |
 | OWASP Top 10 | A03:2021 — Injection |
-| CVSS | A definir |
-| Status | PoC reproduzida anteriormente |
+| CVSS | To be determined |
+| Status | PoC previously reproduced |
 
-## 2. Descrição da vulnerabilidade
+## 2. Vulnerability Description
 
-Foi identificada uma vulnerabilidade de Cross-Site Scripting armazenado (Stored XSS) no componente administrativo responsável pelo gerenciamento de alíquotas de impostos (Tax Rates).
+A Stored Cross-Site Scripting (Stored XSS) vulnerability was identified in the administrative component responsible for managing tax rates (Tax Rates).
 
-A vulnerabilidade está relacionada ao campo `tax_description`, cujo conteúdo é recebido por requisições POST, armazenado no banco de dados e posteriormente apresentado na interface administrativa.
+The vulnerability is associated with the `tax_description` field, whose content is received through POST requests, stored in the database, and subsequently rendered in the administrative interface.
 
-O valor persistido é recuperado por meio da função `parse_multi_language_value()` e concatenado diretamente ao conteúdo HTML apresentado pelo componente `infoBox`.
+The stored value is retrieved through the `parse_multi_language_value()` function and directly concatenated into the HTML content displayed by the `infoBox` component.
 
-A ausência de escaping explícito no ponto de renderização permite que conteúdo HTML controlado pelo usuário seja interpretado pelo navegador.
+The absence of explicit output escaping at the rendering point allows user-controlled HTML content to be interpreted by the browser.
 
-## 3. Endpoint afetado
+## 3. Affected Endpoint
 
-**Endpoint utilizado na reprodução:**
+**Endpoint used during reproduction:**
 
 ```http
 GET /admin/tax_rates.php?page=1&tID=118
 ```
 
-**Registro analisado:**
+**Analyzed Record:**
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | Tax Rate ID | `118` |
-| Tabela | `tax_rates` |
-| Campo vulnerável | `tax_description` |
-| Idioma utilizado | `DE` |
-| Valor original | `DE::` |
+| Table | `tax_rates` |
+| Vulnerable Field | `tax_description` |
+| Language Used | `DE` |
+| Original Value | `DE::` |
 
-## 4. Parâmetros identificados
+## 4. Identified Parameters
 
-| Parâmetro | Método | Finalidade |
+| Parameter | Method | Purpose |
 |---|---|---|
-| `tID` | GET | Identificação do registro de imposto |
-| `action` | GET | Define a operação administrativa |
-| `tax_description` | POST | Descrição da alíquota por idioma |
-| `tax_zone_id` | POST | Identificação da zona geográfica |
-| `tax_class_id` | POST | Identificação da classe de imposto |
-| `tax_rate` | POST | Valor da alíquota |
-| `tax_priority` | POST | Prioridade da alíquota |
+| `tID` | GET | Identifies the tax rate record |
+| `action` | GET | Specifies the administrative operation |
+| `tax_description` | POST | Language-specific tax rate description |
+| `tax_zone_id` | POST | Identifies the geographical zone |
+| `tax_class_id` | POST | Identifies the tax class |
+| `tax_rate` | POST | Tax rate value |
+| `tax_priority` | POST | Tax rate priority |
 
-## 5. Evidências técnicas
+## 5. Technical Evidence
 
-### 5.1. Entrada dos dados
+### 5.1. Input Handling
 
-Arquivo: `admin/tax_rates.php`
+File: `admin/tax_rates.php`
 
-**Linhas 70–78 — Recebimento e preparação dos dados:**
+**Lines 70–78 — Data reception and preparation:**
 
 ```php
 $tax_description = xtc_db_prepare_input($_POST['tax_description']);
@@ -76,17 +76,17 @@ foreach ($tax_description as $key => $value) {
 $tax_description = implode('||', $tax_description_array);
 ```
 
-O sistema recebe descrições associadas aos idiomas e organiza os valores em uma estrutura separada pelo delimitador `||`.
+The system receives language-specific descriptions and organizes the values into a structure separated by the `||` delimiter.
 
-### 5.2. Persistência no banco de dados
+### 5.2. Database Persistence
 
-**Linha 84 — Associação do campo à estrutura de persistência:**
+**Line 84 — Field assignment to the persistence structure:**
 
 ```php
 'tax_description' => $tax_description,
 ```
 
-**Linha 88 — Atualização do registro:**
+**Line 88 — Record update:**
 
 ```php
 xtc_db_perform(
@@ -97,11 +97,11 @@ xtc_db_perform(
 );
 ```
 
-O conteúdo recebido é persistido na tabela de alíquotas de impostos.
+The received content is stored in the tax rates table.
 
-### 5.3. Recuperação do registro
+### 5.3. Record Retrieval
 
-**Linha 183:**
+**Line 183:**
 
 ```php
 if ((!isset($_GET['tID']) ||
@@ -113,11 +113,11 @@ if ((!isset($_GET['tID']) ||
 }
 ```
 
-O parâmetro `tID` permite selecionar o registro que será apresentado no painel administrativo.
+The `tID` parameter allows the selection of the record to be displayed in the administrative panel.
 
-### 5.4. Ponto de renderização vulnerável
+### 5.4. Vulnerable Rendering Point
 
-**Linha 276:**
+**Line 276:**
 
 ```php
 $contents[] = array(
@@ -129,22 +129,22 @@ $contents[] = array(
 );
 ```
 
-O conteúdo de `tax_description` é recuperado e concatenado diretamente à estrutura HTML.
+The `tax_description` content is retrieved and directly concatenated into the HTML structure.
 
-O resultado é posteriormente enviado à renderização do painel administrativo:
+The resulting content is subsequently passed to the administrative panel renderer:
 
 ```php
 $box = new box;
 echo $box->infoBox($heading, $contents);
 ```
 
-**Linha 284.**
+**Line 284.**
 
-Não há escaping explícito na chamada de renderização apresentada.
+No explicit output escaping is present in the displayed rendering call.
 
-### 5.5. Formulário de edição
+### 5.5. Editing Form
 
-**Linha 253:**
+**Line 253:**
 
 ```php
 $description .= xtc_draw_input_field(
@@ -158,98 +158,98 @@ $description .= xtc_draw_input_field(
 ) . '<br>';
 ```
 
-O valor armazenado também é recuperado durante a edição e encaminhado ao helper `xtc_draw_input_field()`.
+The stored value is also retrieved during editing and passed to the `xtc_draw_input_field()` helper.
 
-A proteção efetiva desse contexto depende da implementação interna desse helper.
+The effective protection in this context depends on the helper's internal implementation.
 
-## 6. Prova de conceito (PoC)
+## 6. Proof of Concept (PoC)
 
-**Registro utilizado:**
+**Record Used:**
 
 ```text
 tax_rates_id = 118
 ```
 
-**Campo manipulado:**
+**Manipulated Field:**
 
 ```text
 tax_description
 ```
 
-**Payload utilizado na reprodução:**
+**Payload Used During Reproduction:**
 
 ```html
 DE::</textarea><svg onload=alert(document.domain)>
 ```
 
-O payload utiliza um elemento SVG com evento `onload` para demonstrar a execução de JavaScript no navegador.
+The payload uses an SVG element with an `onload` event handler to demonstrate JavaScript execution in the browser.
 
-A PoC foi executada anteriormente no ambiente de laboratório, utilizando o registro identificado.
+The PoC was previously executed in the laboratory environment using the identified record.
 
-Após a reprodução, o conteúdo original do registro foi restaurado:
+After reproduction, the original record content was restored:
 
 ```text
 DE::
 ```
 
-## 7. Impacto
+## 7. Impact
 
-A exploração da vulnerabilidade pode permitir:
+Exploitation of this vulnerability may allow:
 
-- Execução de JavaScript no navegador de usuários que visualizem o registro afetado.
-- Manipulação do conteúdo apresentado na interface administrativa.
-- Execução de ações em nome de usuários autenticados, dependendo das permissões e proteções existentes.
-- Comprometimento da integridade da sessão administrativa em cenários nos quais os controles de segurança permitam.
+- JavaScript execution in the browsers of users who view the affected record.
+- Manipulation of content displayed in the administrative interface.
+- Execution of actions on behalf of authenticated users, depending on their permissions and the existing security protections.
+- Compromise of administrative session integrity in scenarios where security controls permit it.
 
-A vulnerabilidade apresenta persistência porque o conteúdo é armazenado no banco de dados e apresentado posteriormente na interface.
+The vulnerability is persistent because the content is stored in the database and subsequently rendered in the interface.
 
-## 8. Classificação
+## 8. Classification
 
-| Referência | Classificação |
+| Reference | Classification |
 |---|---|
 | CWE-79 | Improper Neutralization of Input During Web Page Generation |
 | OWASP Top 10 2021 | A03 — Injection |
-| Categoria | Stored Cross-Site Scripting |
-| CVSS | Pendente de avaliação |
+| Category | Stored Cross-Site Scripting |
+| CVSS | Pending assessment |
 
-## 9. Recomendação de correção
+## 9. Remediation Recommendations
 
-Recomenda-se:
+The following measures are recommended:
 
-1. Implementar escaping HTML contextual antes da apresentação de `tax_description`.
-2. Revisar a implementação de `parse_multi_language_value()` para garantir que não seja tratada como mecanismo de sanitização sem garantia.
-3. Garantir codificação adequada em todos os pontos de renderização do painel administrativo.
-4. Revisar a implementação de `xtc_draw_input_field()` para garantir escaping dos valores inseridos nos atributos HTML.
-5. Aplicar validação de entrada conforme o formato esperado para cada idioma.
-6. Revisar outros campos multilíngues que utilizem o mesmo mecanismo de persistência e renderização.
+1. Implement contextual HTML output escaping before rendering `tax_description`.
+2. Review the implementation of `parse_multi_language_value()` to ensure it is not treated as a sanitization mechanism without guarantees.
+3. Ensure proper encoding at every administrative interface rendering point.
+4. Review the implementation of `xtc_draw_input_field()` to ensure that values inserted into HTML attributes are properly escaped.
+5. Apply input validation according to the expected format for each language.
+6. Review other multilingual fields that use the same persistence and rendering mechanism.
 
-A validação de entrada não substitui a codificação contextual de saída.
+Input validation does not replace contextual output encoding.
 
-## 10. Referências
+## 10. References
 
 - CWE-79: https://cwe.mitre.org/data/definitions/79.html
 - OWASP Cross Site Scripting Prevention Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
 
-## 11. Status da investigação
+## 11. Investigation Status
 
-- [x] Identificação do endpoint administrativo.
-- [x] Identificação dos parâmetros.
-- [x] Identificação do campo `tax_description`.
-- [x] Identificação do fluxo de persistência.
-- [x] Identificação do ponto de renderização na linha 276.
-- [x] PoC realizada anteriormente.
-- [x] Registro restaurado após a reprodução, conforme histórico.
-- [ ] Consolidar implementação interna de `parse_multi_language_value()`.
-- [ ] Consolidar evidência visual original da PoC.
-- [ ] Definir pontuação CVSS.
-- [ ] Finalizar divulgação do advisory.
+- [x] Identification of the administrative endpoint.
+- [x] Identification of the parameters.
+- [x] Identification of the `tax_description` field.
+- [x] Identification of the persistence flow.
+- [x] Identification of the rendering point at line 276.
+- [x] PoC previously executed.
+- [x] Record restored after reproduction, according to the investigation history.
+- [ ] Consolidate the internal implementation of `parse_multi_language_value()`.
+- [ ] Consolidate the original visual evidence of the PoC.
+- [ ] Determine the CVSS score.
+- [ ] Finalize advisory disclosure.
 
 ---
 
-**Pesquisador:** Jaime Gama
+**Researcher:** Jaime Gama
 
-**Organização:** RedScan Academy Research
+**Organization:** RedScan Academy Research
 
-**Área:** Segurança Ofensiva / Vulnerability Research
+**Area:** Offensive Security / Vulnerability Research
 
-**Tipo de relatório:** Security Advisory
+**Report Type:** Security Advisory
